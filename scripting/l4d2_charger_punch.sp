@@ -1,6 +1,6 @@
 /*
 *	Charger Punch Force
-*	Copyright (C) 2021 Silvers
+*	Copyright (C) 2022 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.5"
+#define PLUGIN_VERSION 		"1.6"
 
 /*======================================================================================
 	Plugin Info:
@@ -31,6 +31,9 @@
 
 ========================================================================================
 	Change Log:
+
+1.6 (10-Apr-2022)
+	- Fixed rare error if a client disconnects 1 frame after punching.
 
 1.5 (14-Nov-2021)
 	- Changes to fix warnings when compiling on SourceMod 1.11.
@@ -368,8 +371,8 @@ public MRESReturn OnPlayerHit(int pThis, Handle hReturn, Handle hParams)
 	// Because this detour triggers first and "Charger Actions" punch to carry survivors uses the player_hurt event, have to delay flinging. 
 	int victim = DHookGetParam(hParams, 1);
 	DataPack dPack = new DataPack();
-	dPack.WriteCell(victim);
-	dPack.WriteCell(attacker);
+	dPack.WriteCell(GetClientUserId(victim));
+	dPack.WriteCell(GetClientUserId(attacker));
 	RequestFrame(OnFrame, dPack);
 
 	return MRES_Ignored;
@@ -381,6 +384,12 @@ void OnFrame(DataPack dPack)
 	int victim = dPack.ReadCell();
 	int attacker = dPack.ReadCell();
 	delete dPack;
+
+	victim = GetClientOfUserId(victim);
+	if( !victim || !IsClientInGame(victim) ) return;
+
+	attacker = GetClientOfUserId(attacker);
+	if( !attacker || !IsClientInGame(attacker) ) return;
 
 	// Prevent multiple hits
 	if( g_fLastPunch[victim] > GetGameTime() ) return;
